@@ -219,8 +219,22 @@ class CActiveFinder extends CComponent
 				$with=substr($with,0,$pos);
 			}
 
-			if(isset($parent->children[$with]) && $parent->children[$with]->master===null)
-				return $parent->children[$with];
+            if(isset($parent->children[$with]) && $parent->children[$with]->master===null)
+            {
+                if(isset($options['alias']))
+                {
+                    if(!isset($parent->children[$with.'_'.$options['alias']]))
+                    {
+                        $test = clone $parent->children[$with];
+                        $test->alias = $options['alias'];
+                        $test->tableAlias = $test->alias;
+                        $test->rawTableAlias = $this->_builder->getSchema()->quoteTableName($test->alias);
+                        $parent->children[$with.'_'.$options['alias']] = $test;
+                    }
+                    return $parent->children[$with.'_'.$options['alias']];
+                }
+                return $parent->children[$with];
+            }
 
 			if(($relation=$parent->model->getActiveRelation($with))===null)
 				throw new CDbException(Yii::t('yii','Relation "{name}" is not defined in active record class "{class}".',
@@ -278,7 +292,10 @@ class CActiveFinder extends CComponent
 					$element=new CJoinElement($this,$relation,$parent,++$this->_joinCount);
 				if(!empty($relation->through))
 				{
-					$slave=$this->buildJoinTree($parent,$relation->through,array('select'=>''));
+                    if(is_array($relation->through))
+                        $slave=$this->buildJoinTree($parent,key($relation->through),array('select'=>false, 'alias'=>current($relation->through)));
+                    else
+                        $slave=$this->buildJoinTree($parent,$relation->through,array('select'=>''));
 					$slave->master=$element;
 					$element->slave=$slave;
 				}
